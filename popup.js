@@ -1,19 +1,25 @@
-chrome.storage.local.get("factResults", (data) => {
-    const results = data.factResults || [];
+document.addEventListener("DOMContentLoaded", () => {
+  chrome.storage.local.get(["factResults"], (result) => {
+    const results = result.factResults;
     const container = document.getElementById("results");
 
-    if (results.length === 0) {
-        container.textContent = "No fact-checks found.";
+    console.log("FACT CHECK RESULTS:", results);
+
+    if (!results || results.length === 0) {
+      container.textContent = "No fact-checks found.";
     } else {
-        results.forEach(claim => {
-            const div = document.createElement("div");
-            div.className = "claim";
-            div.innerHTML = `
-                <strong>${claim.text}</strong><br>
-                <em>${claim.claimReview[0].textualRating}</em><br>
-                <a href="${claim.claimReview[0].url}" target="_blank">Source</a>
-            `;
-            container.appendChild(div);
-        });
+      container.innerHTML = "";
+      results.forEach(claim => {
+        const review = claim.claimReview && claim.claimReview[0];
+        const div = document.createElement("div");
+        div.className = "claim";
+        div.innerHTML = `
+          <strong>${claim.text}</strong><br>
+          <em>${review.textualRating}</em><br>
+          <a href="${review.url}" target="_blank">Source</a>
+        `;
+        container.appendChild(div);
+      });
     }
+  });
 });
