@@ -2,10 +2,25 @@ body {
     font-family: Arial, sans-serif;
     padding: 10px;
     width: 300px;
+    color: #222;
 }
 
-.claim {
+h2 {
+    margin-top: 0;
+    font-size: 18px;
+    text-align: center;
+}
+
+#credibility {
     margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+    text-align: center;
+}
+
+a {
+    display: block;
+    margin: 4px 0;
+    color: #0056d6;
+    text-decoration: none;
+    font-size: 14px;
 }

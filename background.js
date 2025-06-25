@@ -1,3 +1,5 @@
+let lastQuery = "";
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "factcheck",
@@ -7,19 +9,48 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "factcheck") {
-    const selectedText = info.selectionText;
-    const apiKey = "AIzaSyAvJ3gwzgkqOsJMQ7KTn1-mM4aUjw22NY8"; // your key here
+  const selectedText = (info.selectionText || "").trim();
+  if (!selectedText) return;
+  lastQuery = selectedText;
 
-    fetch(`https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodeURIComponent(selectedText)}&key=${apiKey}`)
-      .then(res => res.json())
-      .then(data => {
-        const claims = data.claims || [];
-        chrome.storage.local.set({ factResults: claims }, () => {
-          console.log("Fact check results saved:", claims);
-        });
-      })
-      .catch(err => console.error("API error:", err));
+  const trustedSources = [
+    "snopes.com", "politifact.com", "factcheck.org", "reuters.com",
+    "apnews.com", "bbc.com", "npr.org", "theguardian.com", "nytimes.com",
+    "forbes.com", "thehindu.com", "indianexpress.com", "thewire.in",
+    "scroll.in", "altnews.in", "boomlive.in", "ndtv.com", "factly.in"
+  ];
+
+  const siteQuery = trustedSources.map(site => `site:${site}`).join(" OR ");
+  const fullQuery = `${selectedText} ${siteQuery}`;
+  const googleSearchURL = `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
+
+  // Open search tab then show notification
+  chrome.tabs.create({ url: googleSearchURL }, () => {
+    setTimeout(() => {
+      chrome.notifications.create("newsPrompt", {
+        type: "basic",
+        iconUrl: "icons/icon128.png",
+        title: "Want more results?",
+        message: "Would you like to check Google News for this claim?",
+        buttons: [{ title: "Yes, show me" }],
+        priority: 1
+      });
+    }, 1500);
+  });
+});
+
+// Handle notification button click
+chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
+  if (notifId === "newsPrompt" && btnIdx === 0) {
+    const newsUrl = `https://news.google.com/search?q=${encodeURIComponent(lastQuery)}`;
+    chrome.tabs.create({ url: newsUrl });
+    chrome.notifications.clear("newsPrompt");
   }
 });
 
+// Optionally clear notification on close
+chrome.notifications.onClosed.addListener((notifId) => {
+  if (notifId === "newsPrompt") {
+    chrome.notifications.clear("newsPrompt");
+  }
+});
