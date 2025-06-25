@@ -54,3 +54,29 @@ chrome.notifications.onClosed.addListener((notifId) => {
     chrome.notifications.clear("newsPrompt");
   }
 });
+
+// New: On popup open, check if domain is unrated and inject links to trusted sites
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "checkDomainCredibility" && message.domain && message.highlightedText) {
+    const trustedSources = [
+      "snopes.com", "politifact.com", "factcheck.org", "reuters.com",
+      "apnews.com", "bbc.com", "npr.org", "theguardian.com", "nytimes.com",
+      "forbes.com", "thehindu.com", "indianexpress.com", "thewire.in",
+      "scroll.in", "altnews.in", "boomlive.in", "ndtv.com", "factly.in"
+    ];
+
+    const domain = message.domain;
+    const text = message.highlightedText;
+    const links = trustedSources.map(site => {
+      return {
+        name: site,
+        url: `https://www.google.com/search?q=site:${site}+${encodeURIComponent(text)}`
+      };
+    });
+
+    const credibility = trustedSources.includes(domain) ? "trusted" :
+                        ["sputniknews.com", "infowars.com"].includes(domain) ? "unreliable" : "unrated";
+
+    sendResponse({ credibility, links });
+  }
+});

@@ -1,3 +1,4 @@
+// popup.js
 const trusted = [
   "snopes.com", "politifact.com", "factcheck.org", "reuters.com", "apnews.com",
   "bbc.com", "npr.org", "theguardian.com", "nytimes.com", "forbes.com",
@@ -35,34 +36,30 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     credibility.innerHTML = `<b>${domain}</b> is <span style="color:gray;">unrated</span>`;
   }
 
-  // Highlighted text to show quick search links
-  chrome.scripting.executeScript({
-    target: { tabId: tabs[0].id },
-    func: () => window.getSelection().toString()
-  }, (res) => {
-    const text = (res && res[0] && res[0].result) || "";
-    const container = document.getElementById("quick-links");
+  // If the domain is unrated, offer trusted links
+  if (!trusted.includes(domain) && !questionable.includes(domain) && !mixed.includes(domain)) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      func: () => window.getSelection().toString()
+    }, (res) => {
+      const highlightedText = (res && res[0] && res[0].result) || "";
+      if (!highlightedText || highlightedText.length < 3) return;
 
-    if (text && text.length > 3) {
-      const q = encodeURIComponent(text);
-      const links = [
-        { name: "Google", url: `https://www.google.com/search?q=${q}` },
-        { name: "Google News", url: `https://news.google.com/search?q=${q}` },
-        { name: "Snopes", url: `https://www.snopes.com/search/?q=${q}` },
-        { name: "PolitiFact", url: `https://www.politifact.com/search/?q=${q}` },
-        { name: "Reuters", url: `https://www.reuters.com/site-search/?query=${q}` },
-        { name: "AltNews", url: `https://www.altnews.in/?s=${q}` }
-      ];
-
-      container.innerHTML = "<h4>Search Claim On:</h4>";
-      links.forEach(link => {
-        const a = document.createElement("a");
-        a.href = link.url;
-        a.target = "_blank";
-        a.textContent = `${link.name}`;
-        a.style.display = "block";
-        container.appendChild(a);
+      chrome.runtime.sendMessage({
+        action: "checkDomainCredibility",
+        domain,
+        highlightedText
+      }, (response) => {
+        const container = document.getElementById("quick-links");
+        container.innerHTML = `<h4>Search on Trusted Sources:</h4>`;
+        response.links.forEach(link => {
+          const a = document.createElement("a");
+          a.href = link.url;
+          a.textContent = `${link.name}`;
+          a.target = "_blank";
+          container.appendChild(a);
+        });
       });
-    }
-  });
+    });
+  }
 });
